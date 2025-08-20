@@ -33,37 +33,47 @@ scene.add(tower);
 function loadCustomTowerModel() {
     const mtlLoader = new MTLLoader();
     const objLoader = new OBJLoader();
+    const fileLoader = new THREE.FileLoader();
 
     const mtlUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.mtl';
     const objUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.obj';
+    const resourcePath = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/';
 
-    mtlLoader.load(mtlUrl,
-        (materials) => {
+    // Lade die MTL-Datei als Text, um den Pfad zur Textur zu korrigieren
+    fileLoader.load(mtlUrl,
+        (mtlText) => {
+            // Korrigiere den Texturpfad. Der Benutzer hat bestätigt, dass es eine .jpg ist.
+            const correctedMtlText = mtlText.replace(/map_Kd .*/g, 'map_Kd texture.jpg');
+
+            // Parse das korrigierte Material
+            const materials = mtlLoader.parse(correctedMtlText, resourcePath);
             materials.preload();
+
+            // Lade das OBJ-Modell mit den korrigierten Materialien
             objLoader.setMaterials(materials);
             objLoader.load(objUrl,
                 (object) => {
-                    // Skalieren und zentrieren Sie das Modell, damit es zur Spielwelt passt.
                     const box = new THREE.Box3().setFromObject(object);
                     const center = box.getCenter(new THREE.Vector3());
-                    object.position.sub(center); // Verschiebe das Zentrum des Modells zum Ursprung
-
-                    // Passe die Skalierung an. Dieser Wert ist eine Schätzung.
+                    object.position.sub(center);
                     const scale = 0.005;
                     object.scale.set(scale, scale, scale);
-
-                    // Füge das geladene und angepasste Objekt zur Turm-Gruppe hinzu
                     tower.add(object);
                 },
                 (xhr) => { console.log(`Turm-Modell (OBJ): ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`); },
                 (error) => { console.error('Ein Fehler ist beim Laden des OBJ-Modells aufgetreten:', error); }
             );
         },
-        (xhr) => { console.log(`Turm-Material (MTL): ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`); },
+        undefined, // onProgress für den FileLoader (nicht benötigt)
         (error) => {
-            console.error('Ein Fehler ist beim Laden der MTL-Datei aufgetreten. Lade Modell mit Standardmaterial.', error);
-            // Fallback: Lade das OBJ ohne Material, wenn die MTL-Datei fehlschlägt
+            console.error('Die MTL-Datei konnte nicht als Text geladen werden. Versuche, das OBJ ohne Materialien zu laden.', error);
+            // Fallback: Lade das OBJ ohne Material, wenn die MTL-Datei selbst nicht geladen werden kann
             objLoader.load(objUrl, (object) => {
+                const box = new THREE.Box3().setFromObject(object);
+                const center = box.getCenter(new THREE.Vector3());
+                object.position.sub(center);
+                const scale = 0.005;
+                object.scale.set(scale, scale, scale);
                 tower.add(object);
             });
         }
