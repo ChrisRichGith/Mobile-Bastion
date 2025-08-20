@@ -14,6 +14,16 @@ const upgradeAutoshootButtonEl = document.getElementById('upgrade-autoshoot-butt
 
 // Szene, Kamera und Renderer initialisieren
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x333333); // Dunkelgrauer Hintergrund
+
+// Lichtquellen hinzufügen
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Weiches weißes Licht
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Stärkeres Licht aus einer Richtung
+directionalLight.position.set(5, 10, 7.5);
+scene.add(directionalLight);
+
 const frustumSize = 20;
 const aspect = window.innerWidth / window.innerHeight;
 const camera = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 0.1, 1000);
