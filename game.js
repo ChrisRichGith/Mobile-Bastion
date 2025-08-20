@@ -59,6 +59,15 @@ function loadCustomTowerModel() {
                     const scale = 0.005;
                     object.scale.set(scale, scale, scale);
                     tower.add(object);
+
+                    // DEBUG: Überschreibe alle Materialien mit einer leuchtend grünen Farbe, um Texturprobleme auszuschließen.
+                    console.log("Modell geladen. Überschreibe Material mit leuchtend grüner Debug-Farbe.");
+                    const overrideMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                    object.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            child.material = overrideMaterial;
+                        }
+                    });
                 },
                 (xhr) => { console.log(`Turm-Modell (OBJ): ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`); },
                 (error) => {
