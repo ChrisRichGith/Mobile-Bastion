@@ -61,21 +61,23 @@ function loadCustomTowerModel() {
                     tower.add(object);
                 },
                 (xhr) => { console.log(`Turm-Modell (OBJ): ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`); },
-                (error) => { console.error('Ein Fehler ist beim Laden des OBJ-Modells aufgetreten:', error); }
+                (error) => {
+                    console.error('FEHLER: Das OBJ-Modell konnte nicht geladen oder verarbeitet werden.', error);
+                    console.log('Erstelle einen sichtbaren Würfel als Platzhalter.');
+                    const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1);
+                    const fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                    const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+                    tower.add(fallbackCube);
+                }
             );
         },
         undefined, // onProgress für den FileLoader (nicht benötigt)
         (error) => {
-            console.error('Die MTL-Datei konnte nicht als Text geladen werden. Versuche, das OBJ ohne Materialien zu laden.', error);
-            // Fallback: Lade das OBJ ohne Material, wenn die MTL-Datei selbst nicht geladen werden kann
-            objLoader.load(objUrl, (object) => {
-                const box = new THREE.Box3().setFromObject(object);
-                const center = box.getCenter(new THREE.Vector3());
-                object.position.sub(center);
-                const scale = 0.005;
-                object.scale.set(scale, scale, scale);
-                tower.add(object);
-            });
+            console.error('FEHLER: Die MTL-Datei konnte nicht geladen werden. Erstelle einen sichtbaren Würfel als Platzhalter.', error);
+            const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+            const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+            tower.add(fallbackCube);
         }
     );
 }
