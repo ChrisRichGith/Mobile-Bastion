@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 // UI-Elemente
 const scoreEl = document.getElementById('score');
@@ -29,8 +31,8 @@ scene.add(tower);
 
 // Funktion zum Laden des benutzerdefinierten Turm-Modells
 function loadCustomTowerModel() {
-    const mtlLoader = new THREE.MTLLoader();
-    const objLoader = new THREE.OBJLoader();
+    const mtlLoader = new MTLLoader();
+    const objLoader = new OBJLoader();
 
     const mtlUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.mtl';
     const objUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.obj';
