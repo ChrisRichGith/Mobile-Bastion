@@ -56,7 +56,7 @@ function loadCustomTowerModel() {
                     const box = new THREE.Box3().setFromObject(object);
                     const center = box.getCenter(new THREE.Vector3());
                     object.position.sub(center);
-                    const scale = 0.005;
+                    const scale = 0.5;
                     object.scale.set(scale, scale, scale);
                     tower.add(object);
 
