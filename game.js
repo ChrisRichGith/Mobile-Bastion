@@ -32,6 +32,7 @@ scene.add(tower);
 // Funktion zum Laden des benutzerdefinierten Turm-Modells
 function loadCustomTowerModel() {
     const mtlLoader = new MTLLoader();
+    mtlLoader.setCrossOrigin('anonymous'); // Wichtig für das Laden von Texturen von anderen Domains
     const objLoader = new OBJLoader();
     const fileLoader = new THREE.FileLoader();
 
