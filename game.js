@@ -36,65 +36,33 @@ camera.position.z = 10;
 camera.lookAt(scene.position);
 
 // Spieler-Turm erstellen
-const tower = new THREE.Group(); // Wir verwenden eine Gruppe als Container für das Modell
+// Wird später durch den texturierten Turm ersetzt
+let tower = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
+    new THREE.MeshBasicMaterial({ color: 0x888888 }) // Platzhalter-Farbe
+);
 scene.add(tower);
 
-// Funktion zum Laden des benutzerdefinierten Turm-Modells
-function loadCustomTowerModel() {
-    const mtlLoader = new MTLLoader();
-    mtlLoader.setCrossOrigin('anonymous'); // Wichtig für das Laden von Texturen von anderen Domains
-    const objLoader = new OBJLoader();
-    const fileLoader = new THREE.FileLoader();
+// Lade die Textur und wende sie auf den Turm an
+const textureLoader = new THREE.TextureLoader();
+textureLoader.setCrossOrigin('anonymous'); // Wichtig für das Laden von Bildern von anderen Domains
 
-    const mtlUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.mtl';
-    const objUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/abandonedMedievalTower.obj';
-    const resourcePath = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_02/';
+const textureUrl = 'https://raw.githubusercontent.com/ChrisRichGith/Mobile-Bastion/main/Obj/Tower_01/castle%20wall%20norm.png';
 
-    // Lade die MTL-Datei als Text, um den Pfad zur Textur zu korrigieren
-    fileLoader.load(mtlUrl,
-        (mtlText) => {
-            // Korrigiere den Texturpfad. Der Benutzer hat bestätigt, dass es eine .jpg ist.
-            const correctedMtlText = mtlText.replace(/map_Kd .*/g, 'map_Kd texture.jpg');
-
-            // Parse das korrigierte Material
-            const materials = mtlLoader.parse(correctedMtlText, resourcePath);
-            materials.preload();
-
-            // Lade das OBJ-Modell mit den korrigierten Materialien
-            objLoader.setMaterials(materials);
-            objLoader.load(objUrl,
-                (object) => {
-                    const box = new THREE.Box3().setFromObject(object);
-                    const center = box.getCenter(new THREE.Vector3());
-                    object.position.sub(center);
-                    const scale = 0.5;
-                    object.scale.set(scale, scale, scale);
-                    tower.add(object);
-                },
-                (xhr) => { console.log(`Turm-Modell (OBJ): ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`); },
-                (error) => {
-                    console.error('FEHLER: Das OBJ-Modell konnte nicht geladen oder verarbeitet werden.', error);
-                    console.log('Erstelle einen sichtbaren Würfel als Platzhalter.');
-                    const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1);
-                    const fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-                    const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
-                    tower.add(fallbackCube);
-                }
-            );
-        },
-        undefined, // onProgress für den FileLoader (nicht benötigt)
-        (error) => {
-            console.error('FEHLER: Die MTL-Datei konnte nicht geladen werden. Erstelle einen sichtbaren Würfel als Platzhalter.', error);
-            const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-            const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
-            tower.add(fallbackCube);
-        }
-    );
-}
-
-// Starte das Laden des Modells
-loadCustomTowerModel();
+textureLoader.load(
+    textureUrl,
+    (texture) => {
+        // Erstelle ein neues Material mit der geladenen Textur
+        const material = new THREE.MeshPhongMaterial({ map: texture });
+        // Wende das neue Material auf den Turm an
+        tower.material = material;
+        tower.material.needsUpdate = true;
+    },
+    undefined, // onProgress callback
+    (error) => {
+        console.error('Ein Fehler ist beim Laden der Turm-Textur aufgetreten.', error);
+    }
+);
 
 // Spieler-Steuerung
 const keys = {};
