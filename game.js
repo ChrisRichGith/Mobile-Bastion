@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
+// Spiel-Konstanten
+const FIELD_WIDTH = 18;
+const FIELD_HEIGHT = 18;
+
 // UI-Elemente
 const scoreEl = document.getElementById('score');
 const healthEl = document.getElementById('health');
@@ -74,10 +78,6 @@ const keys = {};
 document.addEventListener('keydown', (event) => { keys[event.code] = true; });
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
 const playerSpeed = 0.1;
-
-// Spielfeld-Konstanten
-const FIELD_WIDTH = 18;
-const FIELD_HEIGHT = 18;
 
 // Spiel- und Spieler-Statistiken
 const playerStats = {
