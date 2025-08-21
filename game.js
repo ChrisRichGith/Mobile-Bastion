@@ -165,9 +165,7 @@ function init() {
     animate();
 }
 
-function gameOver() {
-    isGameOver = true;
-    clearTimeout(enemySpawnTimeoutId);
+function showGameOverScreen() {
     const earnedBonus = Math.floor(score / 10);
     playerStats.bonusPoints += earnedBonus;
     finalScoreEl.textContent = score;
@@ -175,10 +173,21 @@ function gameOver() {
     gameOverContainerEl.style.display = 'flex';
 }
 
+function gameOver() {
+    if (isGameOver) return; // Verhindere mehrfaches Auslösen
+
+    isGameOver = true;
+    clearTimeout(enemySpawnTimeoutId);
+
+    // Verzögere das Anzeigen des Game-Over-Bildschirms
+    setTimeout(showGameOverScreen, 2000); // 2 Sekunden Verzögerung
+}
+
 function animate() {
-    if (isGameOver) return;
     requestAnimationFrame(animate);
-    score = Math.floor((Date.now() - startTime) / 100);
+
+    if (!isGameOver) {
+        score = Math.floor((Date.now() - startTime) / 100);
     scoreEl.textContent = `Score: ${score}`;
     enemySpeed = 0.05 + score * 0.0001;
     if (keys['ArrowUp']) tower.position.y += playerSpeed;
@@ -263,6 +272,7 @@ function animate() {
             scene.remove(enemy);
             enemies.splice(i, 1);
         }
+    }
     }
 
     // Partikel-Animation
