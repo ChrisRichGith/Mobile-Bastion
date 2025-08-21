@@ -16,6 +16,11 @@ const upgradeAutoshootButtonEl = document.getElementById('upgrade-autoshoot-butt
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x333333); // Dunkelgrauer Hintergrund
 
+// Spielfeld visualisieren
+const gridHelper = new THREE.GridHelper(FIELD_WIDTH, FIELD_HEIGHT);
+gridHelper.rotation.x = Math.PI / 2;
+scene.add(gridHelper);
+
 // Lichtquellen hinzufügen
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Weiches weißes Licht
 scene.add(ambientLight);
@@ -70,6 +75,10 @@ document.addEventListener('keydown', (event) => { keys[event.code] = true; });
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
 const playerSpeed = 0.1;
 
+// Spielfeld-Konstanten
+const FIELD_WIDTH = 18;
+const FIELD_HEIGHT = 18;
+
 // Spiel- und Spieler-Statistiken
 const playerStats = {
     maxHealth: 1,
@@ -92,16 +101,34 @@ function spawnEnemy() {
     const enemyGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+
     const side = Math.floor(Math.random() * 4);
-    const spawnDistance = 10;
-    const position = new THREE.Vector3();
+    const halfW = FIELD_WIDTH / 2;
+    const halfH = FIELD_HEIGHT / 2;
+    const spawnBuffer = 1; // Wie weit außerhalb der Grenzen sie erscheinen
+
+    let x, y;
+
     switch (side) {
-        case 0: position.set((Math.random() - 0.5) * 20, spawnDistance, 0); break;
-        case 1: position.set((Math.random() - 0.5) * 20, -spawnDistance, 0); break;
-        case 2: position.set(-spawnDistance, (Math.random() - 0.5) * 20, 0); break;
-        case 3: position.set(spawnDistance, (Math.random() - 0.5) * 20, 0); break;
+        case 0: // Oben
+            x = Math.random() * FIELD_WIDTH - halfW;
+            y = halfH + spawnBuffer;
+            break;
+        case 1: // Unten
+            x = Math.random() * FIELD_WIDTH - halfW;
+            y = -halfH - spawnBuffer;
+            break;
+        case 2: // Links
+            x = -halfW - spawnBuffer;
+            y = Math.random() * FIELD_HEIGHT - halfH;
+            break;
+        case 3: // Rechts
+            x = halfW + spawnBuffer;
+            y = Math.random() * FIELD_HEIGHT - halfH;
+            break;
     }
-    enemy.position.copy(position);
+
+    enemy.position.set(x, y, 0);
     const direction = new THREE.Vector3().subVectors(tower.position, enemy.position).normalize();
     enemy.userData.direction = direction;
     enemies.push(enemy);
@@ -194,6 +221,12 @@ function animate() {
     if (keys['ArrowDown']) tower.position.y -= playerSpeed;
     if (keys['ArrowLeft']) tower.position.x -= playerSpeed;
     if (keys['ArrowRight']) tower.position.x += playerSpeed;
+
+    // Spielerbewegung auf das Spielfeld beschränken
+    const halfWidth = FIELD_WIDTH / 2;
+    const halfHeight = FIELD_HEIGHT / 2;
+    tower.position.x = Math.max(-halfWidth, Math.min(halfWidth, tower.position.x));
+    tower.position.y = Math.max(-halfHeight, Math.min(halfHeight, tower.position.y));
 
     // Autoschuss-Logik
     if (playerStats.autoShoot.enabled) {
