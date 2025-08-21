@@ -84,6 +84,7 @@ let currentHealth, score, startTime, isGameOver, enemySpawnTimeoutId;
 let enemySpeed = 0.05;
 const enemies = [];
 const bullets = [];
+const particles = [];
 const bulletSpeed = 0.2;
 let lastShotTime = 0;
 
@@ -105,6 +106,28 @@ function spawnEnemy() {
     enemy.userData.direction = direction;
     enemies.push(enemy);
     scene.add(enemy);
+}
+
+function createExplosion(position) {
+    const particleCount = 30;
+    const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const particleMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+        particle.position.copy(position);
+
+        particle.userData.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1
+        );
+
+        particle.userData.lifetime = 100 + Math.random() * 100; // Lifetime in frames
+
+        particles.push(particle);
+        scene.add(particle);
+    }
 }
 
 function scheduleNextEnemySpawn() {
@@ -129,8 +152,12 @@ function init() {
     currentHealth = playerStats.maxHealth;
     enemySpeed = 0.05;
     tower.position.set(0, 0, 0);
+    tower.visible = true; // Mache den Turm wieder sichtbar
     enemies.forEach(enemy => scene.remove(enemy));
     enemies.length = 0;
+    // Entferne auch alle verbleibenden Partikel
+    particles.forEach(particle => scene.remove(particle));
+    particles.length = 0;
     gameOverContainerEl.style.display = 'none';
     clearTimeout(enemySpawnTimeoutId);
     scheduleNextEnemySpawn();
@@ -226,6 +253,8 @@ function animate() {
             scene.remove(enemy);
             enemies.splice(i, 1);
             if (currentHealth <= 0) {
+                createExplosion(tower.position);
+                tower.visible = false;
                 gameOver();
             }
             continue;
@@ -235,6 +264,19 @@ function animate() {
             enemies.splice(i, 1);
         }
     }
+
+    // Partikel-Animation
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        particle.position.add(particle.userData.velocity);
+        particle.userData.velocity.y -= 0.0005; // Schwerkraft
+        particle.userData.lifetime -= 1;
+        if (particle.userData.lifetime <= 0) {
+            scene.remove(particle);
+            particles.splice(i, 1);
+        }
+    }
+
     renderer.render(scene, camera);
 }
 
