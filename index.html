@@ -21,8 +21,39 @@
             <hr>
             <h3>Upgrades</h3>
             <p>Bonus-Punkte: <span id="bonus-points">0</span></p>
-            <button id="upgrade-health-button" style="margin-bottom: 10px;">Upgrade Health (Kosten: 100)</button>
-            <button id="upgrade-autoshoot-button" style="margin-bottom: 10px;">Enable Auto-Shoot (Kosten: 250)</button>
+            <div id="upgrades-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px; margin: 20px auto;">
+                <!-- Turm Upgrades -->
+                <div>
+                    <h4>Turm-Upgrades</h4>
+                    <p>Health: <span id="health-stat">1</span></p>
+                    <button id="upgrade-health-button">Upgrade Health (<span id="health-cost">100</span>)</button>
+                    <p>Bewegungstempo: <span id="player-speed-stat">0.1</span></p>
+                    <button id="upgrade-player-speed-button">Upgrade (<span id="player-speed-cost">80</span>)</button>
+                    <p>Kugel-Geschwindigkeit: <span id="bullet-speed-stat">0.2</span></p>
+                    <button id="upgrade-bullet-speed-button">Upgrade (<span id="bullet-speed-cost">120</span>)</button>
+                </div>
+                <!-- Auto-Shoot Upgrades -->
+                <div>
+                    <h4>Auto-Shoot</h4>
+                    <div id="autoshoot-enable-container">
+                        <button id="upgrade-autoshoot-button">Enable Auto-Shoot (<span id="autoshoot-enable-cost">250</span>)</button>
+                    </div>
+                    <div id="autoshoot-upgrades-container" style="display: none;">
+                        <p>Feuerrate: <span id="firerate-stat">1</span>/s</p>
+                        <button id="upgrade-firerate-button">Upgrade (<span id="firerate-cost">150</span>)</button>
+                        <p>Reichweite: <span id="range-stat">10</span></p>
+                        <button id="upgrade-range-button">Upgrade (<span id="range-cost">150</span>)</button>
+                    </div>
+                </div>
+                <!-- Gegner Debuffs -->
+                <div>
+                    <h4>Gegner-Debuffs</h4>
+                    <p>Gegner-Tempo: <span id="enemy-speed-stat">100</span>%</p>
+                    <button id="downgrade-enemy-speed-button">Verlangsamen (<span id="enemy-speed-cost">200</span>)</button>
+                    <p>Spawn-Rate: <span id="spawn-rate-stat">100</span>%</p>
+                    <button id="downgrade-spawn-rate-button">Verlangsamen (<span id="spawn-rate-cost">300</span>)</button>
+                </div>
+            </div>
             <hr>
             <button id="restart-button">Neustart</button>
         </div>

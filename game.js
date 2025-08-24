@@ -15,6 +15,35 @@ const gameOverContainerEl = document.getElementById('game-over-container');
 const restartButtonEl = document.getElementById('restart-button');
 const upgradeHealthButtonEl = document.getElementById('upgrade-health-button');
 const upgradeAutoshootButtonEl = document.getElementById('upgrade-autoshoot-button');
+const upgradePlayerSpeedButtonEl = document.getElementById('upgrade-player-speed-button');
+const upgradeBulletSpeedButtonEl = document.getElementById('upgrade-bullet-speed-button');
+const upgradeFirerateButtonEl = document.getElementById('upgrade-firerate-button');
+const upgradeRangeButtonEl = document.getElementById('upgrade-range-button');
+const downgradeEnemySpeedButtonEl = document.getElementById('downgrade-enemy-speed-button');
+const downgradeSpawnRateButtonEl = document.getElementById('downgrade-spawn-rate-button');
+
+// Stat Display Spans
+const healthStatEl = document.getElementById('health-stat');
+const playerSpeedStatEl = document.getElementById('player-speed-stat');
+const bulletSpeedStatEl = document.getElementById('bullet-speed-stat');
+const firerateStatEl = document.getElementById('firerate-stat');
+const rangeStatEl = document.getElementById('range-stat');
+const enemySpeedStatEl = document.getElementById('enemy-speed-stat');
+const spawnRateStatEl = document.getElementById('spawn-rate-stat');
+
+// Cost Display Spans
+const healthCostEl = document.getElementById('health-cost');
+const playerSpeedCostEl = document.getElementById('player-speed-cost');
+const bulletSpeedCostEl = document.getElementById('bullet-speed-cost');
+const autoshootEnableCostEl = document.getElementById('autoshoot-enable-cost');
+const firerateCostEl = document.getElementById('firerate-cost');
+const rangeCostEl = document.getElementById('range-cost');
+const enemySpeedCostEl = document.getElementById('enemy-speed-cost');
+const spawnRateCostEl = document.getElementById('spawn-rate-cost');
+
+// Container
+const autoshootEnableContainerEl = document.getElementById('autoshoot-enable-container');
+const autoshootUpgradesContainerEl = document.getElementById('autoshoot-upgrades-container');
 
 // Szene, Kamera und Renderer initialisieren
 const scene = new THREE.Scene();
@@ -77,24 +106,59 @@ textureLoader.load(
 const keys = {};
 document.addEventListener('keydown', (event) => { keys[event.code] = true; });
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
-const playerSpeed = 0.1;
 
 // Spiel- und Spieler-Statistiken
 const playerStats = {
-    maxHealth: 1,
     bonusPoints: 0,
+    health: {
+        current: 1,
+        max: 1,
+        cost: 100,
+        upgradeAmount: 1
+    },
+    playerSpeed: {
+        current: 0.1,
+        cost: 80,
+        upgradeAmount: 0.01
+    },
+    bulletSpeed: {
+        current: 0.2,
+        cost: 120,
+        upgradeAmount: 0.02
+    },
     autoShoot: {
         enabled: false,
-        fireRate: 1, // Schüsse pro Sekunde
-        range: 10,
+        enableCost: 250,
+        fireRate: {
+            current: 1, // Schüsse pro Sekunde
+            cost: 150,
+            upgradeAmount: 0.2
+        },
+        range: {
+            current: 10,
+            cost: 150,
+            upgradeAmount: 1
+        }
+    },
+    enemyDebuffs: {
+        speed: {
+            modifier: 1.0, // 100%
+            cost: 200,
+            upgradeAmount: 0.05 // 5% reduction
+        },
+        spawnRate: {
+            modifier: 1.0, // 100%
+            cost: 300,
+            upgradeAmount: 0.05 // 5% reduction
+        }
     }
 };
-let currentHealth, score, startTime, isGameOver, enemySpawnTimeoutId;
-let enemySpeed = 0.05;
+
+let score, startTime, isGameOver, enemySpawnTimeoutId;
+let baseEnemySpeed = 0.05;
 const enemies = [];
 const bullets = [];
 const particles = [];
-const bulletSpeed = 0.2;
 let lastShotTime = 0;
 
 function spawnEnemy() {
@@ -161,23 +225,23 @@ function scheduleNextEnemySpawn() {
     if (isGameOver) return;
     const baseSpawnRate = 2000;
     const minSpawnRate = 500;
-    const spawnRate = Math.max(minSpawnRate, baseSpawnRate - score * 5);
+    const spawnRateDecrease = score * 5;
+    const finalSpawnRate = Math.max(minSpawnRate, (baseSpawnRate - spawnRateDecrease) * playerStats.enemyDebuffs.spawnRate.modifier);
     enemySpawnTimeoutId = setTimeout(() => {
         spawnEnemy();
         scheduleNextEnemySpawn();
-    }, spawnRate);
+    }, finalSpawnRate);
 }
 
 function updateHealthDisplay() {
-    healthEl.textContent = `Health: ${currentHealth}/${playerStats.maxHealth}`;
+    healthEl.textContent = `Health: ${playerStats.health.current}/${playerStats.health.max}`;
 }
 
 function init() {
     isGameOver = false;
     score = 0;
     startTime = Date.now();
-    currentHealth = playerStats.maxHealth;
-    enemySpeed = 0.05;
+    playerStats.health.current = playerStats.health.max;
     tower.position.set(0, 0, 0);
     tower.visible = true; // Mache den Turm wieder sichtbar
     enemies.forEach(enemy => scene.remove(enemy));
@@ -196,7 +260,7 @@ function showGameOverScreen() {
     const earnedBonus = Math.floor(score / 10);
     playerStats.bonusPoints += earnedBonus;
     finalScoreEl.textContent = score;
-    bonusPointsEl.textContent = playerStats.bonusPoints;
+    updateShopUI();
     gameOverContainerEl.style.display = 'flex';
 }
 
@@ -216,11 +280,11 @@ function animate() {
     if (!isGameOver) {
         score = Math.floor((Date.now() - startTime) / 100);
     scoreEl.textContent = `Score: ${score}`;
-    enemySpeed = 0.05 + score * 0.0001;
-    if (keys['ArrowUp']) tower.position.y += playerSpeed;
-    if (keys['ArrowDown']) tower.position.y -= playerSpeed;
-    if (keys['ArrowLeft']) tower.position.x -= playerSpeed;
-    if (keys['ArrowRight']) tower.position.x += playerSpeed;
+    const enemySpeed = (baseEnemySpeed + score * 0.0001) * playerStats.enemyDebuffs.speed.modifier;
+    if (keys['ArrowUp']) tower.position.y += playerStats.playerSpeed.current;
+    if (keys['ArrowDown']) tower.position.y -= playerStats.playerSpeed.current;
+    if (keys['ArrowLeft']) tower.position.x -= playerStats.playerSpeed.current;
+    if (keys['ArrowRight']) tower.position.x += playerStats.playerSpeed.current;
 
     // Spielerbewegung auf das Spielfeld beschränken
     const halfWidth = FIELD_WIDTH / 2;
@@ -230,14 +294,13 @@ function animate() {
 
     // Autoschuss-Logik
     if (playerStats.autoShoot.enabled) {
-        const { fireRate, range } = playerStats.autoShoot;
-        if (Date.now() - lastShotTime > 1000 / fireRate) {
+        if (Date.now() - lastShotTime > 1000 / playerStats.autoShoot.fireRate.current) {
             let nearestEnemy = null;
             let minDistance = Infinity;
 
             enemies.forEach(enemy => {
                 const distance = tower.position.distanceTo(enemy.position);
-                if (distance < minDistance && distance < range) {
+                if (distance < minDistance && distance < playerStats.autoShoot.range.current) {
                     minDistance = distance;
                     nearestEnemy = enemy;
                 }
@@ -260,7 +323,7 @@ function animate() {
     // Kugel-Bewegung und Kollision
     for (let i = bullets.length - 1; i >= 0; i--) {
         const bullet = bullets[i];
-        bullet.position.add(bullet.userData.direction.clone().multiplyScalar(bulletSpeed));
+        bullet.position.add(bullet.userData.direction.clone().multiplyScalar(playerStats.bulletSpeed.current));
 
         if (bullet.position.length() > 20) {
             scene.remove(bullet);
@@ -290,11 +353,11 @@ function animate() {
         enemy.position.add(enemy.userData.direction.clone().multiplyScalar(enemySpeed));
         const distance = tower.position.distanceTo(enemy.position);
         if (distance < 0.75) {
-            currentHealth--;
+            playerStats.health.current--;
             updateHealthDisplay();
             scene.remove(enemy);
             enemies.splice(i, 1);
-            if (currentHealth <= 0) {
+            if (playerStats.health.current <= 0) {
                 createExplosion(tower.position);
                 tower.visible = false;
                 gameOver();
@@ -323,37 +386,138 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+function updateShopUI() {
+    // Update all text contents
+    bonusPointsEl.textContent = playerStats.bonusPoints;
+
+    healthStatEl.textContent = playerStats.health.max;
+    healthCostEl.textContent = playerStats.health.cost;
+
+    playerSpeedStatEl.textContent = playerStats.playerSpeed.current.toFixed(2);
+    playerSpeedCostEl.textContent = playerStats.playerSpeed.cost;
+
+    bulletSpeedStatEl.textContent = playerStats.bulletSpeed.current.toFixed(2);
+    bulletSpeedCostEl.textContent = playerStats.bulletSpeed.cost;
+
+    if (playerStats.autoShoot.enabled) {
+        autoshootEnableContainerEl.style.display = 'none';
+        autoshootUpgradesContainerEl.style.display = 'block';
+
+        firerateStatEl.textContent = playerStats.autoShoot.fireRate.current.toFixed(1);
+        firerateCostEl.textContent = playerStats.autoShoot.fireRate.cost;
+
+        rangeStatEl.textContent = playerStats.autoShoot.range.current;
+        rangeCostEl.textContent = playerStats.autoShoot.range.cost;
+    } else {
+        autoshootEnableContainerEl.style.display = 'block';
+        autoshootUpgradesContainerEl.style.display = 'none';
+        autoshootEnableCostEl.textContent = playerStats.autoShoot.enableCost;
+    }
+
+    enemySpeedStatEl.textContent = `${(playerStats.enemyDebuffs.speed.modifier * 100).toFixed(0)}%`;
+    enemySpeedCostEl.textContent = playerStats.enemyDebuffs.speed.cost;
+
+    spawnRateStatEl.textContent = `${(playerStats.enemyDebuffs.spawnRate.modifier * 100).toFixed(0)}%`;
+    spawnRateCostEl.textContent = playerStats.enemyDebuffs.spawnRate.cost;
+}
+
+// --- Event Listeners for Upgrades ---
+
 upgradeHealthButtonEl.addEventListener('click', () => {
-    const cost = 100;
-    if (playerStats.bonusPoints >= cost) {
-        playerStats.bonusPoints -= cost;
-        playerStats.maxHealth++;
-        bonusPointsEl.textContent = playerStats.bonusPoints;
-        alert('Health-Upgrade erfolgreich! Du hast jetzt mehr Leben.');
+    const stat = playerStats.health;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.max += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.2); // Increase cost by 20%
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+upgradePlayerSpeedButtonEl.addEventListener('click', () => {
+    const stat = playerStats.playerSpeed;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.current += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.3);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+upgradeBulletSpeedButtonEl.addEventListener('click', () => {
+    const stat = playerStats.bulletSpeed;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.current += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.3);
+        updateShopUI();
     } else {
         alert('Nicht genügend Bonus-Punkte!');
     }
 });
 
 upgradeAutoshootButtonEl.addEventListener('click', () => {
-    const cost = 250;
-    if (playerStats.autoShoot.enabled) {
-        // Hier könnte man weitere Upgrades für Feuerrate, Reichweite etc. einbauen
-        alert('Auto-Shoot ist bereits aktiviert!');
-        return;
-    }
-
-    if (playerStats.bonusPoints >= cost) {
-        playerStats.bonusPoints -= cost;
-        playerStats.autoShoot.enabled = true;
-        bonusPointsEl.textContent = playerStats.bonusPoints;
-        upgradeAutoshootButtonEl.disabled = true;
-        upgradeAutoshootButtonEl.textContent = 'Auto-Shoot Aktiviert';
-        alert('Auto-Shoot aktiviert!');
+    const stat = playerStats.autoShoot;
+    if (playerStats.bonusPoints >= stat.enableCost) {
+        playerStats.bonusPoints -= stat.enableCost;
+        stat.enabled = true;
+        updateShopUI();
     } else {
         alert('Nicht genügend Bonus-Punkte!');
     }
 });
+
+upgradeFirerateButtonEl.addEventListener('click', () => {
+    const stat = playerStats.autoShoot.fireRate;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.current += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.4);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+upgradeRangeButtonEl.addEventListener('click', () => {
+    const stat = playerStats.autoShoot.range;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.current += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.2);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+downgradeEnemySpeedButtonEl.addEventListener('click', () => {
+    const stat = playerStats.enemyDebuffs.speed;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.modifier -= stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.5);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+downgradeSpawnRateButtonEl.addEventListener('click', () => {
+    const stat = playerStats.enemyDebuffs.spawnRate;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.modifier -= stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.5);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
 
 window.addEventListener('resize', () => {
     const aspect = window.innerWidth / window.innerHeight;
