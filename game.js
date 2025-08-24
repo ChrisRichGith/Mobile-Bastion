@@ -50,9 +50,36 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x333333); // Dunkelgrauer Hintergrund
 
 // Spielfeld visualisieren
-const gridHelper = new THREE.GridHelper(FIELD_WIDTH, FIELD_HEIGHT);
-gridHelper.rotation.x = Math.PI / 2;
-scene.add(gridHelper);
+// const gridHelper = new THREE.GridHelper(FIELD_WIDTH, FIELD_HEIGHT);
+// gridHelper.rotation.x = Math.PI / 2;
+// scene.add(gridHelper);
+
+function createPlayfieldBorder() {
+    const borderGroup = new THREE.Group();
+    const borderWidth = 0.2;
+    const borderMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+
+    const topGeo = new THREE.BoxGeometry(FIELD_WIDTH + borderWidth, borderWidth, 1);
+    const topMesh = new THREE.Mesh(topGeo, borderMaterial);
+    topMesh.position.y = FIELD_HEIGHT / 2;
+
+    const bottomGeo = new THREE.BoxGeometry(FIELD_WIDTH + borderWidth, borderWidth, 1);
+    const bottomMesh = new THREE.Mesh(bottomGeo, borderMaterial);
+    bottomMesh.position.y = -FIELD_HEIGHT / 2;
+
+    const leftGeo = new THREE.BoxGeometry(borderWidth, FIELD_HEIGHT + borderWidth, 1);
+    const leftMesh = new THREE.Mesh(leftGeo, borderMaterial);
+    leftMesh.position.x = -FIELD_WIDTH / 2;
+
+    const rightGeo = new THREE.BoxGeometry(borderWidth, FIELD_HEIGHT + borderWidth, 1);
+    const rightMesh = new THREE.Mesh(rightGeo, borderMaterial);
+    rightMesh.position.x = FIELD_WIDTH / 2;
+
+    borderGroup.add(topMesh, bottomMesh, leftMesh, rightMesh);
+    return borderGroup;
+}
+scene.add(createPlayfieldBorder());
+
 
 // Lichtquellen hinzufügen
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Weiches weißes Licht
@@ -279,7 +306,7 @@ function animate() {
 
     if (!isGameOver) {
         score = Math.floor((Date.now() - startTime) / 100);
-    scoreEl.textContent = `Score: ${score}`;
+        scoreEl.textContent = `Score: ${score} (+${playerStats.bonusPoints})`;
     const enemySpeed = (baseEnemySpeed + score * 0.0001) * playerStats.enemyDebuffs.speed.modifier;
     if (keys['ArrowUp']) tower.position.y += playerStats.playerSpeed.current;
     if (keys['ArrowDown']) tower.position.y -= playerStats.playerSpeed.current;
@@ -287,8 +314,9 @@ function animate() {
     if (keys['ArrowRight']) tower.position.x += playerStats.playerSpeed.current;
 
     // Spielerbewegung auf das Spielfeld beschränken
-    const halfWidth = FIELD_WIDTH / 2;
-    const halfHeight = FIELD_HEIGHT / 2;
+    const towerRadius = 0.5;
+    const halfWidth = FIELD_WIDTH / 2 - towerRadius;
+    const halfHeight = FIELD_HEIGHT / 2 - towerRadius;
     tower.position.x = Math.max(-halfWidth, Math.min(halfWidth, tower.position.x));
     tower.position.y = Math.max(-halfHeight, Math.min(halfHeight, tower.position.y));
 
@@ -339,7 +367,7 @@ function animate() {
                 scene.remove(enemy);
                 enemies.splice(j, 1);
                 score += 10;
-                scoreEl.textContent = `Score: ${score}`;
+                // scoreEl is updated in the main loop, no need to set it here twice
                 break;
             }
         }

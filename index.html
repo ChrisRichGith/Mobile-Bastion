@@ -21,9 +21,9 @@
             <hr>
             <h3>Upgrades</h3>
             <p>Bonus-Punkte: <span id="bonus-points">0</span></p>
-            <div id="upgrades-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px; margin: 20px auto;">
+            <div id="upgrades-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 800px; margin: 20px auto; padding: 20px; background-color: rgba(0,0,0,0.3); border-radius: 10px;">
                 <!-- Turm Upgrades -->
-                <div>
+                <div style="padding: 15px; border: 1px solid #666; border-radius: 8px; background-color: rgba(255,255,255,0.1);">
                     <h4>Turm-Upgrades</h4>
                     <p>Health: <span id="health-stat">1</span></p>
                     <button id="upgrade-health-button">Upgrade Health (<span id="health-cost">100</span>)</button>
@@ -33,7 +33,7 @@
                     <button id="upgrade-bullet-speed-button">Upgrade (<span id="bullet-speed-cost">120</span>)</button>
                 </div>
                 <!-- Auto-Shoot Upgrades -->
-                <div>
+                <div style="padding: 15px; border: 1px solid #666; border-radius: 8px; background-color: rgba(255,255,255,0.1);">
                     <h4>Auto-Shoot</h4>
                     <div id="autoshoot-enable-container">
                         <button id="upgrade-autoshoot-button">Enable Auto-Shoot (<span id="autoshoot-enable-cost">250</span>)</button>
@@ -46,7 +46,7 @@
                     </div>
                 </div>
                 <!-- Gegner Debuffs -->
-                <div>
+                <div style="padding: 15px; border: 1px solid #666; border-radius: 8px; background-color: rgba(255,255,255,0.1);">
                     <h4>Gegner-Debuffs</h4>
                     <p>Gegner-Tempo: <span id="enemy-speed-stat">100</span>%</p>
                     <button id="downgrade-enemy-speed-button">Verlangsamen (<span id="enemy-speed-cost">200</span>)</button>
