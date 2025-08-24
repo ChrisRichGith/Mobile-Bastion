@@ -284,7 +284,8 @@ function init() {
 }
 
 function showGameOverScreen() {
-    const earnedBonus = score; // Convert score 1:1 to bonus points
+    // This function is being overwritten to ensure the 1:1 point conversion.
+    const earnedBonus = score;
     playerStats.bonusPoints += earnedBonus;
     finalScoreEl.textContent = score;
     updateShopUI();
