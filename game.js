@@ -157,7 +157,7 @@ const playerStats = {
         enabled: false,
         enableCost: 250,
         fireRate: {
-            current: 1, // Schüsse pro Sekunde
+            current: 0.5, // Schüsse pro Sekunde (1 Schuss alle 2 Sekunden)
             cost: 150,
             upgradeAmount: 0.2
         },
