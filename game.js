@@ -17,6 +17,7 @@ const upgradeHealthButtonEl = document.getElementById('upgrade-health-button');
 const upgradeAutoshootButtonEl = document.getElementById('upgrade-autoshoot-button');
 const upgradePlayerSpeedButtonEl = document.getElementById('upgrade-player-speed-button');
 const upgradeBulletSpeedButtonEl = document.getElementById('upgrade-bullet-speed-button');
+const upgradeBulletDamageButtonEl = document.getElementById('upgrade-bullet-damage-button');
 const upgradeFirerateButtonEl = document.getElementById('upgrade-firerate-button');
 const upgradeRangeButtonEl = document.getElementById('upgrade-range-button');
 const downgradeEnemySpeedButtonEl = document.getElementById('downgrade-enemy-speed-button');
@@ -26,6 +27,7 @@ const downgradeSpawnRateButtonEl = document.getElementById('downgrade-spawn-rate
 const healthStatEl = document.getElementById('health-stat');
 const playerSpeedStatEl = document.getElementById('player-speed-stat');
 const bulletSpeedStatEl = document.getElementById('bullet-speed-stat');
+const bulletDamageStatEl = document.getElementById('bullet-damage-stat');
 const firerateStatEl = document.getElementById('firerate-stat');
 const rangeStatEl = document.getElementById('range-stat');
 const enemySpeedStatEl = document.getElementById('enemy-speed-stat');
@@ -35,6 +37,7 @@ const spawnRateStatEl = document.getElementById('spawn-rate-stat');
 const healthCostEl = document.getElementById('health-cost');
 const playerSpeedCostEl = document.getElementById('player-speed-cost');
 const bulletSpeedCostEl = document.getElementById('bullet-speed-cost');
+const bulletDamageCostEl = document.getElementById('bullet-damage-cost');
 const autoshootEnableCostEl = document.getElementById('autoshoot-enable-cost');
 const firerateCostEl = document.getElementById('firerate-cost');
 const rangeCostEl = document.getElementById('range-cost');
@@ -148,10 +151,17 @@ const playerStats = {
         cost: 80,
         upgradeAmount: 0.01
     },
-    bulletSpeed: {
-        current: 0.2,
-        cost: 120,
-        upgradeAmount: 0.02
+    bullet: {
+        speed: {
+            current: 0.2,
+            cost: 120,
+            upgradeAmount: 0.02
+        },
+        damage: {
+            current: 1,
+            cost: 200,
+            upgradeAmount: 1
+        }
     },
     autoShoot: {
         enabled: false,
@@ -189,9 +199,30 @@ const particles = [];
 let lastShotTime = 0;
 
 function spawnEnemy() {
-    const enemyGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+    let enemy;
+    const isTank = score > 150 && Math.random() < 0.2; // 20% chance to spawn a tank after score 150
+
+    if (isTank) {
+        const enemyGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8); // Bigger
+        const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0x800080 }); // Purple
+        enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        enemy.userData = {
+            type: 'tank',
+            health: 5,
+            speedModifier: 0.6, // Slower
+            points: 50
+        };
+    } else {
+        const enemyGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red
+        enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        enemy.userData = {
+            type: 'normal',
+            health: 1,
+            speedModifier: 1.0, // Normal speed
+            points: 10
+        };
+    }
 
     const side = Math.floor(Math.random() * 4);
     const halfW = FIELD_WIDTH / 2;
@@ -308,7 +339,7 @@ function animate() {
     if (!isGameOver) {
         score = Math.floor((Date.now() - startTime) / 100);
         scoreEl.textContent = `Score: ${score} (+${playerStats.bonusPoints})`;
-    const enemySpeed = (baseEnemySpeed + score * 0.0001) * playerStats.enemyDebuffs.speed.modifier;
+    const gameSpeed = (baseEnemySpeed + score * 0.0001) * playerStats.enemyDebuffs.speed.modifier;
     if (keys['ArrowUp']) tower.position.y += playerStats.playerSpeed.current;
     if (keys['ArrowDown']) tower.position.y -= playerStats.playerSpeed.current;
     if (keys['ArrowLeft']) tower.position.x -= playerStats.playerSpeed.current;
@@ -352,7 +383,7 @@ function animate() {
     // Kugel-Bewegung und Kollision
     for (let i = bullets.length - 1; i >= 0; i--) {
         const bullet = bullets[i];
-        bullet.position.add(bullet.userData.direction.clone().multiplyScalar(playerStats.bulletSpeed.current));
+        bullet.position.add(bullet.userData.direction.clone().multiplyScalar(playerStats.bullet.speed.current));
 
         if (bullet.position.length() > 20) {
             scene.remove(bullet);
@@ -362,12 +393,17 @@ function animate() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             const enemy = enemies[j];
-            if (bullet.position.distanceTo(enemy.position) < 0.3) {
+            if (bullet.position.distanceTo(enemy.position) < 0.5) { // Increased hit box slightly
                 scene.remove(bullet);
                 bullets.splice(i, 1);
-                scene.remove(enemy);
-                enemies.splice(j, 1);
-                score += 10;
+
+                enemy.userData.health -= playerStats.bullet.damage.current;
+
+                if (enemy.userData.health <= 0) {
+                    scene.remove(enemy);
+                    enemies.splice(j, 1);
+                    score += enemy.userData.points;
+                }
                 // scoreEl is updated in the main loop, no need to set it here twice
                 break;
             }
@@ -379,6 +415,7 @@ function animate() {
         const enemy = enemies[i];
         const direction = new THREE.Vector3().subVectors(tower.position, enemy.position).normalize();
         enemy.userData.direction = direction;
+        const enemySpeed = gameSpeed * enemy.userData.speedModifier;
         enemy.position.add(enemy.userData.direction.clone().multiplyScalar(enemySpeed));
         const distance = tower.position.distanceTo(enemy.position);
         if (distance < 0.75) {
@@ -425,8 +462,10 @@ function updateShopUI() {
     playerSpeedStatEl.textContent = playerStats.playerSpeed.current.toFixed(2);
     playerSpeedCostEl.textContent = playerStats.playerSpeed.cost;
 
-    bulletSpeedStatEl.textContent = playerStats.bulletSpeed.current.toFixed(2);
-    bulletSpeedCostEl.textContent = playerStats.bulletSpeed.cost;
+    bulletSpeedStatEl.textContent = playerStats.bullet.speed.current.toFixed(2);
+    bulletSpeedCostEl.textContent = playerStats.bullet.speed.cost;
+    bulletDamageStatEl.textContent = playerStats.bullet.damage.current;
+    bulletDamageCostEl.textContent = playerStats.bullet.damage.cost;
 
     if (playerStats.autoShoot.enabled) {
         autoshootEnableContainerEl.style.display = 'none';
@@ -477,11 +516,23 @@ upgradePlayerSpeedButtonEl.addEventListener('click', () => {
 });
 
 upgradeBulletSpeedButtonEl.addEventListener('click', () => {
-    const stat = playerStats.bulletSpeed;
+    const stat = playerStats.bullet.speed;
     if (playerStats.bonusPoints >= stat.cost) {
         playerStats.bonusPoints -= stat.cost;
         stat.current += stat.upgradeAmount;
         stat.cost = Math.floor(stat.cost * 1.3);
+        updateShopUI();
+    } else {
+        alert('Nicht genügend Bonus-Punkte!');
+    }
+});
+
+upgradeBulletDamageButtonEl.addEventListener('click', () => {
+    const stat = playerStats.bullet.damage;
+    if (playerStats.bonusPoints >= stat.cost) {
+        playerStats.bonusPoints -= stat.cost;
+        stat.current += stat.upgradeAmount;
+        stat.cost = Math.floor(stat.cost * 1.8); // Damage is powerful, so higher cost increase
         updateShopUI();
     } else {
         alert('Nicht genügend Bonus-Punkte!');
