@@ -111,6 +111,7 @@ let tower = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
     new THREE.MeshBasicMaterial({ color: 0x888888 }) // Platzhalter-Farbe
 );
+let towerVelocity = new THREE.Vector2(0, 0);
 scene.add(tower);
 
 // Lade die Textur und wende sie auf den Turm an
@@ -149,9 +150,9 @@ const playerStats = {
         upgradeAmount: 1
     },
     playerSpeed: {
-        current: 0.1,
+        current: 10,
         cost: 80,
-        upgradeAmount: 0.01
+        upgradeAmount: 2
     },
     bullet: {
         speed: {
@@ -205,9 +206,37 @@ let isSpawnWarningActive = false;
 let windEventTimeoutId;
 let isWindActive = false;
 let windVector = new THREE.Vector3(0, 0, 0);
+let rainEventTimeoutId;
+let isRainActive = false;
 
 // --- Visual Objects ---
 let windParticles;
+let rainParticles;
+
+function createRainParticles() {
+    const particleCount = 1000;
+    const vertices = [];
+    for (let i = 0; i < particleCount; i++) {
+        const x = (Math.random() - 0.5) * FIELD_WIDTH;
+        const y = Math.random() * FIELD_HEIGHT * 2; // Start higher up
+        const z = (Math.random() - 0.5) * 2;
+        vertices.push(x, y, z);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0xaaaaee,
+        size: 0.15,
+        transparent: true,
+        opacity: 0.6
+    });
+
+    rainParticles = new THREE.Points(geometry, material);
+    rainParticles.visible = false;
+    scene.add(rainParticles);
+}
 
 function createWindParticles() {
     const particleCount = 500;
@@ -367,6 +396,34 @@ function scheduleNextWindEvent() {
     }, spawnRate);
 }
 
+function triggerRainEvent() {
+    if (isGameOver) return;
+
+    eventTextEl.textContent = 'WARNUNG: Regen setzt ein!';
+    eventContainerEl.style.display = 'block';
+
+    setTimeout(() => {
+        eventContainerEl.style.display = 'none';
+        isRainActive = true;
+        rainParticles.visible = true;
+
+        setTimeout(() => {
+            isRainActive = false;
+            rainParticles.visible = false;
+        }, 15000); // Rain for 15 seconds
+
+    }, 3000); // 3 second warning
+}
+
+function scheduleNextRainEvent() {
+    if (isGameOver) return;
+    const spawnRate = 35000 + Math.random() * 20000; // 35-55 seconds
+    rainEventTimeoutId = setTimeout(() => {
+        triggerRainEvent();
+        scheduleNextRainEvent();
+    }, spawnRate);
+}
+
 function scheduleNextEnemySpawn() {
     if (isGameOver) return;
 
@@ -413,6 +470,7 @@ function init() {
     startTime = Date.now();
     playerStats.health.current = playerStats.health.max;
     tower.position.set(0, 0, 0);
+    towerVelocity.set(0, 0);
     tower.visible = true; // Mache den Turm wieder sichtbar
     enemies.forEach(enemy => scene.remove(enemy));
     enemies.length = 0;
@@ -426,9 +484,11 @@ function init() {
     clearTimeout(enemySpawnTimeoutId);
     clearTimeout(powerUpSpawnTimeoutId);
     clearTimeout(windEventTimeoutId);
+    clearTimeout(rainEventTimeoutId);
     scheduleNextEnemySpawn();
     scheduleNextPowerUpSpawn();
     scheduleNextWindEvent();
+    scheduleNextRainEvent();
     updateHealthDisplay();
     animate();
 }
@@ -449,6 +509,7 @@ function gameOver() {
     clearTimeout(enemySpawnTimeoutId);
     clearTimeout(powerUpSpawnTimeoutId);
     clearTimeout(windEventTimeoutId);
+    clearTimeout(rainEventTimeoutId);
 
     // Verzögere das Anzeigen des Game-Over-Bildschirms
     setTimeout(showGameOverScreen, 2000); // 2 Sekunden Verzögerung
@@ -461,10 +522,23 @@ function animate() {
         score = Math.floor((Date.now() - startTime) / 100);
         scoreEl.textContent = `Score: ${score} (+${playerStats.bonusPoints})`;
     const gameSpeed = (baseEnemySpeed + score * 0.0001) * playerStats.enemyDebuffs.speed.modifier;
-    if (keys['ArrowUp']) tower.position.y += playerStats.playerSpeed.current;
-    if (keys['ArrowDown']) tower.position.y -= playerStats.playerSpeed.current;
-    if (keys['ArrowLeft']) tower.position.x -= playerStats.playerSpeed.current;
-    if (keys['ArrowRight']) tower.position.x += playerStats.playerSpeed.current;
+
+    // --- Turm-Bewegung (neue Physik) ---
+    const moveForce = 0.002; // Base force
+    const totalMoveForce = moveForce * playerStats.playerSpeed.current; // Apply speed upgrade
+    if (keys['ArrowUp']) towerVelocity.y += totalMoveForce;
+    if (keys['ArrowDown']) towerVelocity.y -= totalMoveForce;
+    if (keys['ArrowLeft']) towerVelocity.x -= totalMoveForce;
+    if (keys['ArrowRight']) towerVelocity.x += totalMoveForce;
+
+    // Geschwindigkeit anwenden
+    tower.position.x += towerVelocity.x;
+    tower.position.y += towerVelocity.y;
+
+    // Dämpfung (Reibung)
+    const damping = isRainActive ? 0.98 : 0.95; // Weniger Reibung bei Regen
+    towerVelocity.multiplyScalar(damping);
+
 
     // Windeinfluss
     if (isWindActive) {
@@ -603,6 +677,22 @@ function animate() {
             if (positions[i+1] < -halfH) positions[i+1] = halfH;
         }
         windParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Regen-Partikel-Animation
+    if (rainParticles.visible) {
+        const positions = rainParticles.geometry.attributes.position.array;
+        const rainSpeed = 0.2;
+        const topY = FIELD_HEIGHT;
+        const bottomY = -FIELD_HEIGHT / 2;
+
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i+1] -= rainSpeed;
+            if (positions[i+1] < bottomY) {
+                positions[i+1] = topY;
+            }
+        }
+        rainParticles.geometry.attributes.position.needsUpdate = true;
     }
 
     // Partikel-Animation
@@ -779,4 +869,5 @@ window.addEventListener('resize', () => {
 
 restartButtonEl.addEventListener('click', init);
 createWindParticles();
+createRainParticles();
 init();
