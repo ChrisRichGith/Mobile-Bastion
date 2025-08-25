@@ -207,6 +207,33 @@ let isWindActive = false;
 let windVector = new THREE.Vector3(0, 0, 0);
 
 // --- Visual Objects ---
+let windParticles;
+
+function createWindParticles() {
+    const particleCount = 500;
+    const vertices = [];
+    for (let i = 0; i < particleCount; i++) {
+        const x = (Math.random() - 0.5) * FIELD_WIDTH * 2;
+        const y = (Math.random() - 0.5) * FIELD_HEIGHT * 2;
+        const z = (Math.random() - 0.5) * 2;
+        vertices.push(x, y, z);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.1,
+        transparent: true,
+        opacity: 0.7
+    });
+
+    windParticles = new THREE.Points(geometry, material);
+    windParticles.visible = false;
+    scene.add(windParticles);
+}
+
 const spawnWarningMarker = new THREE.Mesh(
     new THREE.CylinderGeometry(0.8, 0.8, 0.1, 32),
     new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 })
@@ -319,11 +346,13 @@ function triggerWindEvent() {
         eventContainerEl.style.display = 'none';
         isWindActive = true;
         windVector.copy(direction.vec);
+        windParticles.visible = true;
 
         // Wind für 10 Sekunden aktiv lassen
         setTimeout(() => {
             isWindActive = false;
             windVector.set(0, 0, 0);
+            windParticles.visible = false;
         }, 10000);
 
     }, 3000);
@@ -556,6 +585,26 @@ function animate() {
         }
     }
 
+    // Wind-Partikel-Animation
+    if (windParticles.visible) {
+        const positions = windParticles.geometry.attributes.position.array;
+        const particleSpeed = 5; // Multiplier for visual speed
+        const halfW = FIELD_WIDTH; // Wrap around a larger area
+        const halfH = FIELD_HEIGHT;
+
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i] += windVector.x * particleSpeed;
+            positions[i+1] += windVector.y * particleSpeed;
+
+            // Wrap around logic
+            if (positions[i] > halfW) positions[i] = -halfW;
+            if (positions[i] < -halfW) positions[i] = halfW;
+            if (positions[i+1] > halfH) positions[i+1] = -halfH;
+            if (positions[i+1] < -halfH) positions[i+1] = halfH;
+        }
+        windParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
     // Partikel-Animation
     for (let i = particles.length - 1; i >= 0; i--) {
         const particle = particles[i];
@@ -729,4 +778,5 @@ window.addEventListener('resize', () => {
 });
 
 restartButtonEl.addEventListener('click', init);
+createWindParticles();
 init();
