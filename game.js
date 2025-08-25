@@ -480,6 +480,14 @@ function init() {
     powerUps.forEach(p => scene.remove(p));
     powerUps.length = 0;
 
+    // Reset weather/event states
+    isRainActive = false;
+    isWindActive = false;
+    windVector.set(0, 0, 0);
+    if (rainParticles) rainParticles.visible = false;
+    if (windParticles) windParticles.visible = false;
+    eventContainerEl.style.display = 'none';
+
     gameOverContainerEl.style.display = 'none';
     clearTimeout(enemySpawnTimeoutId);
     clearTimeout(powerUpSpawnTimeoutId);
