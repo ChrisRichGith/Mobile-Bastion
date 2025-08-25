@@ -22,6 +22,8 @@ const upgradeFirerateButtonEl = document.getElementById('upgrade-firerate-button
 const upgradeRangeButtonEl = document.getElementById('upgrade-range-button');
 const downgradeEnemySpeedButtonEl = document.getElementById('downgrade-enemy-speed-button');
 const downgradeSpawnRateButtonEl = document.getElementById('downgrade-spawn-rate-button');
+const eventContainerEl = document.getElementById('event-container');
+const eventTextEl = document.getElementById('event-text');
 
 // Stat Display Spans
 const healthStatEl = document.getElementById('health-stat');
@@ -200,6 +202,9 @@ const powerUps = [];
 let lastShotTime = 0;
 let powerUpSpawnTimeoutId;
 let isSpawnWarningActive = false;
+let windEventTimeoutId;
+let isWindActive = false;
+let windVector = new THREE.Vector3(0, 0, 0);
 
 // --- Visual Objects ---
 const spawnWarningMarker = new THREE.Mesh(
@@ -295,6 +300,44 @@ function scheduleNextPowerUpSpawn() {
     }, spawnRate);
 }
 
+function triggerWindEvent() {
+    if (isGameOver) return;
+
+    const directions = [
+        { name: 'Norden', vec: new THREE.Vector3(0, 0.01, 0) },
+        { name: 'Osten', vec: new THREE.Vector3(0.01, 0, 0) },
+        { name: 'Süden', vec: new THREE.Vector3(0, -0.01, 0) },
+        { name: 'Westen', vec: new THREE.Vector3(-0.01, 0, 0) }
+    ];
+    const direction = directions[Math.floor(Math.random() * directions.length)];
+
+    eventTextEl.textContent = `WARNUNG: Starker Wind aus ${direction.name}!`;
+    eventContainerEl.style.display = 'block';
+
+    // Warnung für 3 Sekunden anzeigen, dann Wind starten
+    setTimeout(() => {
+        eventContainerEl.style.display = 'none';
+        isWindActive = true;
+        windVector.copy(direction.vec);
+
+        // Wind für 10 Sekunden aktiv lassen
+        setTimeout(() => {
+            isWindActive = false;
+            windVector.set(0, 0, 0);
+        }, 10000);
+
+    }, 3000);
+}
+
+function scheduleNextWindEvent() {
+    if (isGameOver) return;
+    const spawnRate = 30000 + Math.random() * 15000; // 30-45 seconds
+    windEventTimeoutId = setTimeout(() => {
+        triggerWindEvent();
+        scheduleNextWindEvent();
+    }, spawnRate);
+}
+
 function scheduleNextEnemySpawn() {
     if (isGameOver) return;
 
@@ -353,8 +396,10 @@ function init() {
     gameOverContainerEl.style.display = 'none';
     clearTimeout(enemySpawnTimeoutId);
     clearTimeout(powerUpSpawnTimeoutId);
+    clearTimeout(windEventTimeoutId);
     scheduleNextEnemySpawn();
     scheduleNextPowerUpSpawn();
+    scheduleNextWindEvent();
     updateHealthDisplay();
     animate();
 }
@@ -374,6 +419,7 @@ function gameOver() {
     isGameOver = true;
     clearTimeout(enemySpawnTimeoutId);
     clearTimeout(powerUpSpawnTimeoutId);
+    clearTimeout(windEventTimeoutId);
 
     // Verzögere das Anzeigen des Game-Over-Bildschirms
     setTimeout(showGameOverScreen, 2000); // 2 Sekunden Verzögerung
@@ -390,6 +436,11 @@ function animate() {
     if (keys['ArrowDown']) tower.position.y -= playerStats.playerSpeed.current;
     if (keys['ArrowLeft']) tower.position.x -= playerStats.playerSpeed.current;
     if (keys['ArrowRight']) tower.position.x += playerStats.playerSpeed.current;
+
+    // Windeinfluss
+    if (isWindActive) {
+        tower.position.add(windVector);
+    }
 
     // Spielerbewegung auf das Spielfeld beschränken
     const towerRadius = 0.5;
@@ -463,6 +514,9 @@ function animate() {
         enemy.userData.direction = direction;
         const enemySpeed = gameSpeed * enemy.userData.speedModifier;
         enemy.position.add(enemy.userData.direction.clone().multiplyScalar(enemySpeed));
+        if (isWindActive) {
+            enemy.position.add(windVector);
+        }
         const distance = tower.position.distanceTo(enemy.position);
         if (distance < 0.75) {
             playerStats.health.current--;
