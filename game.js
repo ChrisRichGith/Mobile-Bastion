@@ -196,9 +196,21 @@ let baseEnemySpeed = 0.05;
 const enemies = [];
 const bullets = [];
 const particles = [];
+const powerUps = [];
 let lastShotTime = 0;
+let powerUpSpawnTimeoutId;
+let isSpawnWarningActive = false;
 
-function spawnEnemy() {
+// --- Visual Objects ---
+const spawnWarningMarker = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.8, 0.8, 0.1, 32),
+    new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 })
+);
+spawnWarningMarker.visible = false;
+scene.add(spawnWarningMarker);
+
+
+function spawnEnemy(position) {
     let enemy;
     const isTank = score > 150 && Math.random() < 0.2; // 20% chance to spawn a tank after score 150
 
@@ -224,33 +236,7 @@ function spawnEnemy() {
         };
     }
 
-    const side = Math.floor(Math.random() * 4);
-    const halfW = FIELD_WIDTH / 2;
-    const halfH = FIELD_HEIGHT / 2;
-    const spawnBuffer = 1; // Wie weit außerhalb der Grenzen sie erscheinen
-
-    let x, y;
-
-    switch (side) {
-        case 0: // Oben
-            x = Math.random() * FIELD_WIDTH - halfW;
-            y = halfH + spawnBuffer;
-            break;
-        case 1: // Unten
-            x = Math.random() * FIELD_WIDTH - halfW;
-            y = -halfH - spawnBuffer;
-            break;
-        case 2: // Links
-            x = -halfW - spawnBuffer;
-            y = Math.random() * FIELD_HEIGHT - halfH;
-            break;
-        case 3: // Rechts
-            x = halfW + spawnBuffer;
-            y = Math.random() * FIELD_HEIGHT - halfH;
-            break;
-    }
-
-    enemy.position.set(x, y, 0);
+    enemy.position.copy(position);
     const direction = new THREE.Vector3().subVectors(tower.position, enemy.position).normalize();
     enemy.userData.direction = direction;
     enemies.push(enemy);
@@ -279,14 +265,68 @@ function createExplosion(position) {
     }
 }
 
+function spawnPowerUp() {
+    if (powerUps.length > 0 || isGameOver) return; // Only one power-up at a time
+
+    const powerUpGeometry = new THREE.TorusKnotGeometry(0.3, 0.1, 100, 16);
+    const powerUpMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.5 });
+    const powerUp = new THREE.Mesh(powerUpGeometry, powerUpMaterial);
+
+    const halfW = FIELD_WIDTH / 2 - 1;
+    const halfH = FIELD_HEIGHT / 2 - 1;
+
+    powerUp.position.set(
+        (Math.random() * 2 - 1) * halfW,
+        (Math.random() * 2 - 1) * halfH,
+        0.5
+    );
+
+    powerUp.userData.type = 'spawn_warning';
+    powerUps.push(powerUp);
+    scene.add(powerUp);
+}
+
+function scheduleNextPowerUpSpawn() {
+    if (isGameOver) return;
+    const spawnRate = 20000 + Math.random() * 10000; // 20-30 seconds
+    powerUpSpawnTimeoutId = setTimeout(() => {
+        spawnPowerUp();
+        scheduleNextPowerUpSpawn();
+    }, spawnRate);
+}
+
 function scheduleNextEnemySpawn() {
     if (isGameOver) return;
+
+    // 1. Calculate spawn position ahead of time
+    const side = Math.floor(Math.random() * 4);
+    const halfW = FIELD_WIDTH / 2;
+    const halfH = FIELD_HEIGHT / 2;
+    const spawnBuffer = 1;
+    let x, y;
+    switch (side) {
+        case 0: x = Math.random() * FIELD_WIDTH - halfW; y = halfH + spawnBuffer; break;
+        case 1: x = Math.random() * FIELD_WIDTH - halfW; y = -halfH - spawnBuffer; break;
+        case 2: x = -halfW - spawnBuffer; y = Math.random() * FIELD_HEIGHT - halfH; break;
+        case 3: x = halfW + spawnBuffer; y = Math.random() * FIELD_HEIGHT - halfH; break;
+    }
+    const spawnPosition = new THREE.Vector3(x, y, 0);
+
+    // 2. Show warning if power-up is active
+    if (isSpawnWarningActive) {
+        spawnWarningMarker.position.set(x, y, 0.05);
+        spawnWarningMarker.visible = true;
+    }
+
+    // 3. Schedule the spawn
     const baseSpawnRate = 2000;
     const minSpawnRate = 500;
     const spawnRateDecrease = score * 5;
     const finalSpawnRate = Math.max(minSpawnRate, (baseSpawnRate - spawnRateDecrease) * playerStats.enemyDebuffs.spawnRate.modifier);
+
     enemySpawnTimeoutId = setTimeout(() => {
-        spawnEnemy();
+        spawnWarningMarker.visible = false; // Hide marker
+        spawnEnemy(spawnPosition);
         scheduleNextEnemySpawn();
     }, finalSpawnRate);
 }
@@ -307,9 +347,14 @@ function init() {
     // Entferne auch alle verbleibenden Partikel
     particles.forEach(particle => scene.remove(particle));
     particles.length = 0;
+    powerUps.forEach(p => scene.remove(p));
+    powerUps.length = 0;
+
     gameOverContainerEl.style.display = 'none';
     clearTimeout(enemySpawnTimeoutId);
+    clearTimeout(powerUpSpawnTimeoutId);
     scheduleNextEnemySpawn();
+    scheduleNextPowerUpSpawn();
     updateHealthDisplay();
     animate();
 }
@@ -328,6 +373,7 @@ function gameOver() {
 
     isGameOver = true;
     clearTimeout(enemySpawnTimeoutId);
+    clearTimeout(powerUpSpawnTimeoutId);
 
     // Verzögere das Anzeigen des Game-Over-Bildschirms
     setTimeout(showGameOverScreen, 2000); // 2 Sekunden Verzögerung
@@ -435,6 +481,25 @@ function animate() {
             enemies.splice(i, 1);
         }
     }
+    }
+
+    // Power-up Animation und Kollision
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        powerUp.rotation.y += 0.02;
+        powerUp.rotation.x += 0.01;
+
+        if (tower.position.distanceTo(powerUp.position) < 0.8) {
+            // Power-up eingesammelt
+            if (powerUp.userData.type === 'spawn_warning') {
+                isSpawnWarningActive = true;
+                setTimeout(() => {
+                    isSpawnWarningActive = false;
+                }, 10000); // Effekt hält 10 Sekunden
+            }
+            scene.remove(powerUp);
+            powerUps.splice(i, 1);
+        }
     }
 
     // Partikel-Animation
