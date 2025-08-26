@@ -544,7 +544,7 @@ function animate() {
     tower.position.y += towerVelocity.y;
 
     // Dämpfung (Reibung)
-    const damping = isRainActive ? 0.98 : 0.95; // Weniger Reibung bei Regen
+    const damping = isRainActive ? 0.97 : 0.90; // Weniger Reibung bei Regen
     towerVelocity.multiplyScalar(damping);
 
 
