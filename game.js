@@ -450,7 +450,7 @@ function scheduleNextEnemySpawn() {
     // 3. Schedule the spawn
     const baseSpawnRate = 2000;
     const minSpawnRate = 500;
-    const spawnRateDecrease = score * 5;
+    const spawnRateDecrease = score * 3; // Reduced from 5 to slow down difficulty ramp
     const finalSpawnRate = Math.max(minSpawnRate, (baseSpawnRate - spawnRateDecrease) * playerStats.enemyDebuffs.spawnRate.modifier);
 
     enemySpawnTimeoutId = setTimeout(() => {
