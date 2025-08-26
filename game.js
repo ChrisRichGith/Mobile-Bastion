@@ -450,7 +450,7 @@ function scheduleNextEnemySpawn() {
     // 3. Schedule the spawn
     const baseSpawnRate = 2000;
     const minSpawnRate = 500;
-    const spawnRateDecrease = score * 5;
+    const spawnRateDecrease = score * 3; // Reduced from 5 to slow down difficulty ramp
     const finalSpawnRate = Math.max(minSpawnRate, (baseSpawnRate - spawnRateDecrease) * playerStats.enemyDebuffs.spawnRate.modifier);
 
     enemySpawnTimeoutId = setTimeout(() => {
@@ -544,7 +544,7 @@ function animate() {
     tower.position.y += towerVelocity.y;
 
     // Dämpfung (Reibung)
-    const damping = isRainActive ? 0.98 : 0.95; // Weniger Reibung bei Regen
+    const damping = isRainActive ? 0.97 : 0.90; // Weniger Reibung bei Regen
     towerVelocity.multiplyScalar(damping);
 
 
